@@ -760,7 +760,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
         self.pre_compute_freqs = [
             u.unsqueeze(0) for u in self.pre_compute_freqs
         ]
-
+        print(f"hidden_states: {x.shape}")
         x, seq_lens, self.pre_compute_freqs, mask_input = self.inject_motion(
             x,
             seq_lens,
@@ -774,6 +774,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
         self.pre_compute_freqs = torch.cat(self.pre_compute_freqs, dim=0)
         mask_input = torch.cat(mask_input, dim=0)
 
+        print(f"hidden_states: {x.shape}")
         x = x + self.trainable_cond_mask(mask_input).to(x.dtype)
 
         # time embeddings
@@ -846,6 +847,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             freqs=self.pre_compute_freqs,
             context=context,
             context_lens=context_lens)
+        print(f"hidden_states: {x.shape}")
         for idx, block in enumerate(self.blocks):
             x = block(x, **kwargs)
             x = self.after_transformer_block(idx, x)
