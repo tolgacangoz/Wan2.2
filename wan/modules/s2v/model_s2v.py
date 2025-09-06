@@ -760,7 +760,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
         self.pre_compute_freqs = [
             u.unsqueeze(0) for u in self.pre_compute_freqs
         ]
-        print(f"hidden_states: {x.shape}")
+        print(f"hidden_states: {x[0].shape}")
         x, seq_lens, self.pre_compute_freqs, mask_input = self.inject_motion(
             x,
             seq_lens,
@@ -850,6 +850,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
         print(f"hidden_states: {x.shape}")
         for idx, block in enumerate(self.blocks):
             x = block(x, **kwargs)
+            print(f"hidden_states: {x.shape}")
             x = self.after_transformer_block(idx, x)
 
         # Context Parallel
