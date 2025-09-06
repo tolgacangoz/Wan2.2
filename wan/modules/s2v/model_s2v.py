@@ -215,7 +215,11 @@ class WanS2VAttentionBlock(WanAttentionBlock):
                          (1 + e[1][:, i:i + 1]) + e[0][:, i:i + 1])
         norm_x = torch.cat(parts, dim=1)
         # self-attention
+        print(f"norm_x: {norm_x.shape}")
+        print(f"seq_lens: {seq_lens}")
+        print(f"freqs: {freqs.shape}")
         y = self.self_attn(norm_x, seq_lens, grid_sizes, freqs)
+        exit()
         with amp.autocast(dtype=torch.float32):
             z = []
             for i in range(2):
