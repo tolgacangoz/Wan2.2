@@ -549,7 +549,6 @@ class WanS2V:
                         target_shape[2],
                         dtype=self.param_dtype,
                         device=self.device,
-                        generator=torch.Generator('cpu').manual_seed(0),
                         )
                 ]
                 max_seq_len = np.prod(target_shape) // 4
