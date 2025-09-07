@@ -635,8 +635,7 @@ class WanS2V:
                         noise_pred[0].unsqueeze(0),
                         t,
                         latents[0].unsqueeze(0),
-                        return_dict=False,
-                        generator=seed_g)[0]
+                        return_dict=False)[0]
                     latents[0] = temp_x0.squeeze(0)
 
                 if offload_model:
