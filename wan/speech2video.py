@@ -538,8 +538,6 @@ class WanS2V:
                 torch.no_grad(),
         ):
             for r in range(num_repeat):
-                seed_g = torch.Generator(device=self.device)
-                seed_g.manual_seed(seed + r)
 
                 lat_target_frames = (infer_frames + 3 + self.motion_frames
                                     ) // 4 - lat_motion_frames
@@ -552,7 +550,7 @@ class WanS2V:
                         target_shape[2],
                         dtype=self.param_dtype,
                         device=self.device,
-                        generator=seed_g)
+                        )
                 ]
                 max_seq_len = np.prod(target_shape) // 4
 
