@@ -306,7 +306,7 @@ class WanS2V:
             video_path (str): Path to the video file.
             n_frames (int): Number of frames to read.
             target_fps (int, optional): Target sampling frame rate. Defaults to 16.
-            reverse (bool, optional): Whether to read frames in reverse order. 
+            reverse (bool, optional): Whether to read frames in reverse order.
                                     If True, reads the first `n_frames` instead of the last ones.
 
         Returns:
@@ -534,7 +534,6 @@ class WanS2V:
         out = []
         # evaluation mode
         with (
-                torch.amp.autocast('cuda', dtype=self.param_dtype),
                 torch.no_grad(),
         ):
             for r in range(num_repeat):
