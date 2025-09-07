@@ -32,7 +32,7 @@ def flash_attention(
     q_scale=None,
     causal=False,
     window_size=(-1, -1),
-    deterministic=False,
+    deterministic=True,
     dtype=torch.bfloat16,
     version=None,
 ):
