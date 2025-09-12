@@ -551,7 +551,7 @@ class WanS2V:
                         target_shape[1],
                         target_shape[2],
                         dtype=self.param_dtype,
-                        device=self.device,
+                        device="cpu",
                         generator=seed_g,
                         )
                 ]
