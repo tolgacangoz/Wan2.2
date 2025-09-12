@@ -553,7 +553,7 @@ class WanS2V:
                         dtype=self.param_dtype,
                         device="cpu",
                         generator=seed_g,
-                        )
+                        ).to(self.device)
                 ]
                 max_seq_len = np.prod(target_shape) // 4
 
