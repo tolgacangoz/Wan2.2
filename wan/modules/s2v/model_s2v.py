@@ -598,23 +598,26 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             ]
         return x, seq_lens, rope_embs, mask_input
 
-    def after_transformer_block(self, block_idx, hidden_states):
+    def after_transformer_block(self,
+                                block_idx,
+                                hidden_states,
+                                merged_audio_emb,
+                                original_seq_len,
+                                audio_emb_global):
         if block_idx in self.audio_injector.injected_block_id.keys():
             audio_attn_id = self.audio_injector.injected_block_id[block_idx]
-            audio_emb = self.merged_audio_emb  # b f n c
+            audio_emb = merged_audio_emb  # b f n c
             num_frames = audio_emb.shape[1]
 
             if self.use_context_parallel:
                 hidden_states = gather_forward(hidden_states, dim=1)
 
-            input_hidden_states = hidden_states[:, :self.
-                                                original_seq_len].clone(
+            input_hidden_states = hidden_states[:, :original_seq_len].clone(
                                                 )  # b (f h w) c
             input_hidden_states = rearrange(
                 input_hidden_states, "b (t n) c -> (b t) n c", t=num_frames)
 
             if self.enbale_adain and self.adain_mode == "attn_norm":
-                audio_emb_global = self.audio_emb_global
                 audio_emb_global = rearrange(audio_emb_global,
                                              "b t n c -> (b t) n c")
                 adain_hidden_states = self.audio_injector.injector_adain_layers[
@@ -637,9 +640,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
                     device=attn_hidden_states.device) * attn_audio_emb.shape[1])
             residual_out = rearrange(
                 residual_out, "(b t) n c -> b (t n) c", t=num_frames)
-            hidden_states[:, :self.
-                          original_seq_len] = hidden_states[:, :self.
-                                                            original_seq_len] + residual_out
+            hidden_states[:, :original_seq_len] = hidden_states[:, :original_seq_len] + residual_out
 
             if self.use_context_parallel:
                 hidden_states = torch.chunk(
@@ -687,11 +688,11 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
         audio_emb_res = self.casual_audio_encoder(audio_input)
         if self.enbale_adain:
             audio_emb_global, audio_emb = audio_emb_res
-            self.audio_emb_global = audio_emb_global[:,
+            audio_emb_global = audio_emb_global[:,
                                                      motion_frames[1]:].clone()
         else:
             audio_emb = audio_emb_res
-        self.merged_audio_emb = audio_emb[:, motion_frames[1]:, :]
+        merged_audio_emb = audio_emb[:, motion_frames[1]:, :]
 
         device = self.patch_embedding.weight.device
 
@@ -726,7 +727,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
                          ]
 
         ref = [r.flatten(2).transpose(1, 2) for r in ref]  # r: 1 c f h w
-        self.original_seq_len = seq_lens[0]
+        original_seq_len = seq_lens[0]
 
         seq_lens = seq_lens + torch.tensor([r.size(1) for r in ref],
                                            dtype=torch.long)
@@ -743,7 +744,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             for u in x
         ]
         for i in range(len(mask_input)):
-            mask_input[i][:, self.original_seq_len:] = 1
+            mask_input[i][:, original_seq_len:] = 1
 
         # compute the rope embeddings for the input
         x = torch.cat(x)
@@ -791,7 +792,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
                 zero_e0.unsqueeze(2).repeat(e0.size(0), 1, 1, 1)
             ],
                            dim=2)
-            e0 = [e0, self.original_seq_len]
+            e0 = [e0, original_seq_len]
         else:
             e0 = e0.unsqueeze(2).repeat(1, 1, 2, 1)
             e0 = [e0, 0]
@@ -844,13 +845,17 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             context_lens=context_lens)
         for idx, block in enumerate(self.blocks):
             x = block(x, **kwargs)
-            x = self.after_transformer_block(idx, x)
+            x = self.after_transformer_block(idx,
+                                             x,
+                                             merged_audio_emb,
+                                             original_seq_len,
+                                             audio_emb_global)
 
         # Context Parallel
         if self.use_context_parallel:
             x = gather_forward(x.contiguous(), dim=1)
         # unpatchify
-        x = x[:, :self.original_seq_len]
+        x = x[:, :original_seq_len]
         # head
         x = self.head(x, e)
         x = self.unpatchify(x, original_grid_sizes)
