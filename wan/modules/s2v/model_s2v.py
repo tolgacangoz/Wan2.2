@@ -854,7 +854,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
         # head
         x = self.head(x, e)
         x = self.unpatchify(x, original_grid_sizes)
-        return [u.float() for u in x]
+        return [u for u in x]
 
     def unpatchify(self, x, grid_sizes):
         """
