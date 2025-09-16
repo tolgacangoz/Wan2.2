@@ -3,6 +3,7 @@ import math
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.models.modeling_utils import ModelMixin
 
@@ -172,7 +173,12 @@ class WanCrossAttention(WanSelfAttention):
         v = self.v(context).view(b, -1, n, d)
 
         # compute attention
-        x = flash_attention(q, k, v, k_lens=context_lens)
+        # x = flash_attention(q, k, v, k_lens=context_lens)
+        x = F.scaled_dot_product_attention(
+            q,
+            k,
+            v,
+        )
 
         # output
         x = x.flatten(2)
