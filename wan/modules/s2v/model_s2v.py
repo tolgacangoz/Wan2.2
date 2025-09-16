@@ -176,9 +176,9 @@ class WanS2VSelfAttention(WanSelfAttention):
         #     k_lens=seq_lens,
         #     window_size=self.window_size)
         x = F.scaled_dot_product_attention(
-            rope_apply(q, grid_sizes, freqs),
-            rope_apply(k, grid_sizes, freqs),
-            v,
+            rope_apply(q, grid_sizes, freqs).transpose(1, 2),
+            rope_apply(k, grid_sizes, freqs).transpose(1, 2),
+            v.transpose(1, 2),
         )
 
         # output

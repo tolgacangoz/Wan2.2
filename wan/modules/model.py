@@ -175,9 +175,9 @@ class WanCrossAttention(WanSelfAttention):
         # compute attention
         # x = flash_attention(q, k, v, k_lens=context_lens)
         x = F.scaled_dot_product_attention(
-            q,
-            k,
-            v,
+            q.transpose(1, 2),
+            k.transpose(1, 2),
+            v.transpose(1, 2),
         )
 
         # output
