@@ -179,7 +179,7 @@ class WanS2VSelfAttention(WanSelfAttention):
             rope_apply(q, grid_sizes, freqs).transpose(1, 2),
             rope_apply(k, grid_sizes, freqs).transpose(1, 2),
             v.transpose(1, 2),
-        )
+        ).transpose(1, 2)
 
         # output
         x = x.flatten(2)

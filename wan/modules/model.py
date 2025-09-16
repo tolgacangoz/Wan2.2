@@ -178,7 +178,7 @@ class WanCrossAttention(WanSelfAttention):
             q.transpose(1, 2),
             k.transpose(1, 2),
             v.transpose(1, 2),
-        )
+        ).transpose(1, 2)
 
         # output
         x = x.flatten(2)
