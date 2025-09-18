@@ -498,7 +498,7 @@ class WanS2V:
             0) * 2 - 1.0  # b c 1 h w
         ref_pixel_values = ref_pixel_values.to(
             dtype=self.vae.dtype, device=self.vae.device)
-        ref_latents = torch.stack(self.vae.encode(ref_pixel_values))
+        ref_latents = torch.stack(self.vae.encode(ref_pixel_values)).to(self.param_dtype)
 
         # encode the motion latents
         videos_last_frames = motion_latents.detach()
@@ -506,7 +506,7 @@ class WanS2V:
         if init_first_frame:
             drop_first_motion = False
             motion_latents[:, :, -6:] = ref_pixel_values
-        motion_latents = torch.stack(self.vae.encode(motion_latents))
+        motion_latents = torch.stack(self.vae.encode(motion_latents)).to(self.param_dtype)
 
         # get pose cond input if need
         COND = self.load_pose_cond(
