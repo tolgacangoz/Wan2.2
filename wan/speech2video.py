@@ -616,7 +616,7 @@ class WanS2V:
 
                 for i, t in enumerate(tqdm(timesteps)):
                     latent_model_input = latents[0:1]
-                    timestep = t.to(self.device)
+                    timestep = torch.stack([t]).to(self.device)
 
                     noise_pred_cond = self.noise_model(
                         hidden_states=latent_model_input[0].unsqueeze(0), timestep=timestep, return_dict=False, **arg_c)
