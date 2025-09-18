@@ -634,7 +634,7 @@ class WanS2V:
                         noise_pred = noise_pred_cond
 
                     temp_x0 = sample_scheduler.step(
-                        noise_pred[0],
+                        noise_pred[0].unsqueeze(0),
                         t,
                         latents[0].unsqueeze(0),
                         return_dict=False,
