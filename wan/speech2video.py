@@ -129,6 +129,8 @@ class WanS2V:
             dit_fsdp=dit_fsdp,
             shard_fn=shard_fn,
             convert_model_dtype=convert_model_dtype)
+        
+        self.noise_model.set_attention_backend("flash")
 
         self.audio_encoder = AudioEncoder(
             model_id=os.path.join(checkpoint_dir,
