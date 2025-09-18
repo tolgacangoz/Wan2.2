@@ -621,20 +621,17 @@ class WanS2V:
                     timestep = t.expand(1).to(self.device)
 
                     noise_pred_cond = self.noise_model(
-                        hidden_states=latent_model_input[0].unsqueeze(0), timestep=timestep, return_dict=False, **arg_c)
+                        hidden_states=latent_model_input[0].unsqueeze(0), timestep=timestep, return_dict=False, **arg_c)[0]
 
                     if guide_scale > 1:
                         noise_pred_uncond = self.noise_model(
-                            hidden_states=latent_model_input[0].unsqueeze(0), timestep=timestep, return_dict=False, **arg_null)
-                        noise_pred = [
-                            u + guide_scale * (c - u)
-                            for c, u in zip(noise_pred_cond, noise_pred_uncond)
-                        ]
+                            hidden_states=latent_model_input[0].unsqueeze(0), timestep=timestep, return_dict=False, **arg_null)[0]
+                        noise_pred = noise_pred_uncond + guide_scale * (noise_pred_cond - noise_pred_uncond)
                     else:
                         noise_pred = noise_pred_cond
 
                     temp_x0 = sample_scheduler.step(
-                        noise_pred[0],
+                        noise_pred,
                         t,
                         latents[0].unsqueeze(0),
                         return_dict=False,
