@@ -536,7 +536,7 @@ class WanS2V:
         out = []
         # evaluation mode
         with (
-                torch.amp.autocast('cuda', dtype=self.param_dtype),
+                #torch.amp.autocast('cuda', dtype=self.param_dtype),
                 torch.no_grad(),
         ):
             for r in range(num_repeat):
