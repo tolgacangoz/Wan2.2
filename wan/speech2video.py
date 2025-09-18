@@ -643,7 +643,14 @@ class WanS2V:
                         latents[0].unsqueeze(0),
                         return_dict=False,
                         generator=seed_g)[0]
-                    latents[0] = temp_x0.squeeze(0)
+
+                    # Ensure temp_x0 has the correct shape [16, frames, height, width]
+                    while temp_x0.dim() > 4:
+                        temp_x0 = temp_x0.squeeze(0)
+                    while temp_x0.dim() < 4:
+                        temp_x0 = temp_x0.unsqueeze(0)
+
+                    latents[0] = temp_x0
 
                 if offload_model:
                     self.noise_model.cpu()
