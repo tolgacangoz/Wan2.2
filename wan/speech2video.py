@@ -129,7 +129,7 @@ class WanS2V:
             dit_fsdp=dit_fsdp,
             shard_fn=shard_fn,
             convert_model_dtype=convert_model_dtype)
-        
+
         self.noise_model.set_attention_backend("flash")
 
         self.audio_encoder = AudioEncoder(
@@ -620,12 +620,16 @@ class WanS2V:
                     latent_model_input = latents[0:1]
                     timestep = torch.stack([t]).to(self.device)
 
+                    # Ensure proper tensor shape: [batch_size, num_channels, num_frames, height, width]
+                    hidden_states_input = latent_model_input[0].unsqueeze(0)
+                    print(f"DEBUG: hidden_states_input.shape = {hidden_states_input.shape}")
+
                     noise_pred_cond = self.noise_model(
-                        hidden_states=latent_model_input[0].unsqueeze(0), timestep=timestep, return_dict=False, **arg_c)
+                        hidden_states=hidden_states_input, timestep=timestep, return_dict=False, **arg_c)
 
                     if guide_scale > 1:
                         noise_pred_uncond = self.noise_model(
-                            hidden_states=latent_model_input[0].unsqueeze(0), timestep=timestep, return_dict=False, **arg_null)
+                            hidden_states=hidden_states_input, timestep=timestep, return_dict=False, **arg_null)
                         noise_pred = [
                             u + guide_scale * (c - u)
                             for c, u in zip(noise_pred_cond, noise_pred_uncond)
