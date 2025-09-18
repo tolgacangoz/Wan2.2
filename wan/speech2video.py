@@ -26,6 +26,7 @@ from .distributed.sequence_parallel import sp_attn_forward, sp_dit_forward
 from .distributed.util import get_world_size
 from .modules.s2v.audio_encoder import AudioEncoder
 from .modules.s2v.model_s2v import WanModel_S2V, sp_attn_forward_s2v
+from diffusers import WanS2VTransformer3DModel
 from .modules.t5 import T5EncoderModel
 from .modules.vae2_1 import Wan2_1_VAE
 from .utils.fm_solvers import (
@@ -113,10 +114,11 @@ class WanS2V:
 
         logging.info(f"Creating WanModel from {checkpoint_dir}")
         if not dit_fsdp:
-            self.noise_model = WanModel_S2V.from_pretrained(
-                checkpoint_dir,
+            self.noise_model = WanS2VTransformer3DModel.from_pretrained(
+                "tolgacangoz/Wan2.2-S2V-14B-Diffusers",
+                subfolder="transformer",
                 torch_dtype=self.param_dtype,
-                device_map=self.device)
+                ).to(self.device)
         else:
             self.noise_model = WanModel_S2V.from_pretrained(
                 checkpoint_dir, torch_dtype=self.param_dtype)
@@ -306,7 +308,7 @@ class WanS2V:
             video_path (str): Path to the video file.
             n_frames (int): Number of frames to read.
             target_fps (int, optional): Target sampling frame rate. Defaults to 16.
-            reverse (bool, optional): Whether to read frames in reverse order. 
+            reverse (bool, optional): Whether to read frames in reverse order.
                                     If True, reads the first `n_frames` instead of the last ones.
 
         Returns:
@@ -588,23 +590,21 @@ class WanS2V:
                 input_motion_latents = motion_latents.clone()
 
                 arg_c = {
-                    'context': context[0:1],
-                    'seq_len': max_seq_len,
-                    'cond_states': cond_latents,
-                    "motion_latents": input_motion_latents,
-                    'ref_latents': ref_latents,
-                    "audio_input": audio_input,
+                    'encoder_hidden_states': context[0].unsqueeze(0),
+                    'motion_latents': input_motion_latents,
+                    'image_latents': ref_latents,
+                    "audio_embeds": audio_input,
+                    'pose_latents': cond_latents,
                     "motion_frames": [self.motion_frames, lat_motion_frames],
                     "drop_motion_frames": drop_first_motion and r == 0,
                 }
                 if guide_scale > 1:
                     arg_null = {
-                        'context': context_null[0:1],
-                        'seq_len': max_seq_len,
-                        'cond_states': cond_latents,
-                        "motion_latents": input_motion_latents,
-                        'ref_latents': ref_latents,
-                        "audio_input": 0.0 * audio_input,
+                        'encoder_hidden_states': context_null[0].unsqueeze(0),
+                        'motion_latents': input_motion_latents,
+                        'image_latents': ref_latents,
+                        "audio_embeds": 0.0 * audio_input,
+                        'pose_latents': cond_latents,
                         "motion_frames": [
                             self.motion_frames, lat_motion_frames
                         ],
@@ -616,16 +616,14 @@ class WanS2V:
 
                 for i, t in enumerate(tqdm(timesteps)):
                     latent_model_input = latents[0:1]
-                    timestep = [t]
-
-                    timestep = torch.stack(timestep).to(self.device)
+                    timestep = t.to(self.device)
 
                     noise_pred_cond = self.noise_model(
-                        latent_model_input, t=timestep, **arg_c)
+                        hidden_states=latent_model_input[0].unsqueeze(0), timestep=timestep, return_dict=False, **arg_c)
 
                     if guide_scale > 1:
                         noise_pred_uncond = self.noise_model(
-                            latent_model_input, t=timestep, **arg_null)
+                            hidden_states=latent_model_input[0].unsqueeze(0), timestep=timestep, return_dict=False, **arg_null)
                         noise_pred = [
                             u + guide_scale * (c - u)
                             for c, u in zip(noise_pred_cond, noise_pred_uncond)
@@ -634,12 +632,12 @@ class WanS2V:
                         noise_pred = noise_pred_cond
 
                     temp_x0 = sample_scheduler.step(
-                        noise_pred[0].unsqueeze(0),
+                        noise_pred[0],
                         t,
-                        latents[0].unsqueeze(0),
+                        latents[0],
                         return_dict=False,
                         generator=seed_g)[0]
-                    latents[0] = temp_x0.squeeze(0)
+                    latents[0] = temp_x0
 
                 if offload_model:
                     self.noise_model.cpu()
