@@ -650,6 +650,7 @@ class WanS2V:
                     decode_latents = torch.cat([motion_latents, latents], dim=2)
                 else:
                     decode_latents = torch.cat([ref_latents, latents], dim=2)
+                return decode_latents
                 image = torch.stack(self.vae.decode(decode_latents))
                 image = image[:, :, -(infer_frames):]
                 if (drop_first_motion and r == 0):
