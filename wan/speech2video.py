@@ -465,6 +465,7 @@ class WanS2V:
             pre_video_path=None)
         HEIGHT, WIDTH = size
         channel = 3
+        wan = {}
 
         resize_opreat = transforms.Resize(min(HEIGHT, WIDTH))
         crop_opreat = transforms.CenterCrop((HEIGHT, WIDTH))
@@ -485,6 +486,7 @@ class WanS2V:
         if enable_tts is True:
             audio_path = self.tts(tts_prompt_audio, tts_prompt_text, tts_text)
         audio_emb, nr = self.encode_audio(audio_path, infer_frames=infer_frames)
+        wan['audio_embeds'] = audio_emb.to("cpu")
         if num_repeat is None or num_repeat > nr:
             num_repeat = nr
 
@@ -497,22 +499,23 @@ class WanS2V:
         ref_pixel_values = ref_pixel_values.to(
             dtype=self.vae.dtype, device=self.vae.device)
         ref_latents = torch.stack(self.vae.encode(ref_pixel_values))
-
+        wan['condition'] = ref_latents.to("cpu")
         # encode the motion latents
         videos_last_frames = motion_latents.detach()
+        wan['videos_last_pixels'] = videos_last_frames.to("cpu")
         drop_first_motion = self.drop_first_motion
         if init_first_frame:
             drop_first_motion = False
             motion_latents[:, :, -6:] = ref_pixel_values
         motion_latents = torch.stack(self.vae.encode(motion_latents))
-
+        wan['motion_latents'] = motion_latents.to("cpu")
         # get pose cond input if need
         COND = self.load_pose_cond(
             pose_video=pose_video,
             num_repeat=num_repeat,
             infer_frames=infer_frames,
             size=size)
-
+        wan['pose_condition'] = COND[0].to("cpu")
         seed = seed if seed >= 0 else random.randint(0, sys.maxsize)
 
         if n_prompt == "":
@@ -530,7 +533,9 @@ class WanS2V:
             context_null = self.text_encoder([n_prompt], torch.device('cpu'))
             context = [t.to(self.device) for t in context]
             context_null = [t.to(self.device) for t in context_null]
-
+        wan['prompt_embeds'] = context
+        wan['negative_prompt_embeds'] = context_null
+        
         out = []
         # evaluation mode
         with (
@@ -576,7 +581,7 @@ class WanS2V:
                         sigmas=sampling_sigmas)
                 else:
                     raise NotImplementedError("Unsupported solver.")
-
+                wan['timesteps'] = timesteps.to("cpu")
                 latents = deepcopy(noise)
                 with torch.no_grad():
                     left_idx = r * infer_frames
@@ -616,13 +621,14 @@ class WanS2V:
 
                 for i, t in enumerate(tqdm(timesteps)):
                     latent_model_input = latents[0:1]
+                    wan['latents'] = latent_model_input[0].to("cpu")
                     timestep = [t]
 
                     timestep = torch.stack(timestep).to(self.device)
 
                     noise_pred_cond = self.noise_model(
                         latent_model_input, t=timestep, **arg_c)
-
+                    wan['noise_pred'] = noise_pred_cond[0].to("cpu")
                     if guide_scale > 1:
                         noise_pred_uncond = self.noise_model(
                             latent_model_input, t=timestep, **arg_null)
@@ -632,7 +638,7 @@ class WanS2V:
                         ]
                     else:
                         noise_pred = noise_pred_cond
-
+                    wan['noise_uncond'] = noise_pred_uncond[0].to("cpu")
                     temp_x0 = sample_scheduler.step(
                         noise_pred[0].unsqueeze(0),
                         t,
@@ -640,7 +646,7 @@ class WanS2V:
                         return_dict=False,
                         generator=seed_g)[0]
                     latents[0] = temp_x0.squeeze(0)
-
+                    wan['scheduler_step'] = latents[0].to("cpu")
                 if offload_model:
                     self.noise_model.cpu()
                     torch.cuda.synchronize()
@@ -650,7 +656,7 @@ class WanS2V:
                     decode_latents = torch.cat([motion_latents, latents], dim=2)
                 else:
                     decode_latents = torch.cat([ref_latents, latents], dim=2)
-                return decode_latents
+                return wan
                 image = torch.stack(self.vae.decode(decode_latents))
                 image = image[:, :, -(infer_frames):]
                 if (drop_first_motion and r == 0):
