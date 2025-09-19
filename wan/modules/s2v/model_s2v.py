@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.cuda.amp as amp
 import torch.nn as nn
+import torch.nn.functional as F
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.models.modeling_utils import ModelMixin
 from einops import rearrange
@@ -168,12 +169,17 @@ class WanS2VSelfAttention(WanSelfAttention):
 
         q, k, v = qkv_fn(x)
 
-        x = flash_attention(
-            q=rope_apply(q, grid_sizes, freqs),
-            k=rope_apply(k, grid_sizes, freqs),
-            v=v,
-            k_lens=seq_lens,
-            window_size=self.window_size)
+        # x = flash_attention(
+        #     q=rope_apply(q, grid_sizes, freqs),
+        #     k=rope_apply(k, grid_sizes, freqs),
+        #     v=v,
+        #     k_lens=seq_lens,
+        #     window_size=self.window_size)
+        x = F.scaled_dot_product_attention(
+            rope_apply(q, grid_sizes, freqs).transpose(1, 2),
+            rope_apply(k, grid_sizes, freqs).transpose(1, 2),
+            v.transpose(1, 2),
+        ).transpose(1, 2)
 
         # output
         x = x.flatten(2)
