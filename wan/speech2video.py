@@ -535,8 +535,8 @@ class WanS2V:
             context_null = self.text_encoder([n_prompt], torch.device('cpu'))
             context = [t.to(self.device) for t in context]
             context_null = [t.to(self.device) for t in context_null]
-        wan['prompt_embeds'] = context
-        wan['negative_prompt_embeds'] = context_null
+        wan['prompt_embeds'] = context[0].to("cpu")
+        wan['negative_prompt_embeds'] = context_null[0].to("cpu")
 
         out = []
         # evaluation mode
