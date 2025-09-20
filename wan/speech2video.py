@@ -487,7 +487,7 @@ class WanS2V:
             audio_path = self.tts(tts_prompt_audio, tts_prompt_text, tts_text)
         audio_emb, nr, asd = self.encode_audio(audio_path, infer_frames=infer_frames)
         wan['audio_input_values'] = asd['input_values'].detach().clone().to("cpu")
-        wan['audio_feat'] = asd['feat'].detach().clone().to("cpu")
+        wan['audio_after'] = asd['feat'].detach().clone().to("cpu")
         wan['audio_embeds'] = audio_emb.detach().clone().to("cpu")
         if num_repeat is None or num_repeat > nr:
             num_repeat = nr

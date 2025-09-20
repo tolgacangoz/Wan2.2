@@ -86,7 +86,7 @@ class AudioEncoder():
             feat, input_fps=50, output_fps=self.video_rate)
 
         z = feat.to(dtype)  # Encoding for the motion
-        return z, {'input_values': input_values, 'feat': z}
+        return z, {'input_values': input_values, 'feat': torch.cat(res.hidden_states)}
 
     def get_audio_embed_bucket(self,
                                audio_embed,
