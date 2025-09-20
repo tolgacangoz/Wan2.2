@@ -281,7 +281,7 @@ class WanS2V:
         return cond
 
     def encode_audio(self, audio_path, infer_frames):
-        z = self.audio_encoder.extract_audio_feat(
+        z, asd = self.audio_encoder.extract_audio_feat(
             audio_path, return_all_layers=True)
         audio_embed_bucket, num_repeat = self.audio_encoder.get_audio_embed_bucket_fps(
             z, fps=self.fps, batch_frames=infer_frames, m=self.audio_sample_m)
@@ -292,7 +292,7 @@ class WanS2V:
             audio_embed_bucket = audio_embed_bucket.permute(0, 2, 1)
         elif len(audio_embed_bucket.shape) == 4:
             audio_embed_bucket = audio_embed_bucket.permute(0, 2, 3, 1)
-        return audio_embed_bucket, num_repeat
+        return audio_embed_bucket, num_repeat, asd
 
     def read_last_n_frames(self,
                            video_path,
@@ -306,7 +306,7 @@ class WanS2V:
             video_path (str): Path to the video file.
             n_frames (int): Number of frames to read.
             target_fps (int, optional): Target sampling frame rate. Defaults to 16.
-            reverse (bool, optional): Whether to read frames in reverse order. 
+            reverse (bool, optional): Whether to read frames in reverse order.
                                     If True, reads the first `n_frames` instead of the last ones.
 
         Returns:
@@ -485,7 +485,9 @@ class WanS2V:
         # extract audio emb
         if enable_tts is True:
             audio_path = self.tts(tts_prompt_audio, tts_prompt_text, tts_text)
-        audio_emb, nr = self.encode_audio(audio_path, infer_frames=infer_frames)
+        audio_emb, nr, asd = self.encode_audio(audio_path, infer_frames=infer_frames)
+        wan['audio_input_values'] = asd['input_values'].to("cpu")
+        wan['audio_feat'] = asd['feat'].to("cpu")
         wan['audio_embeds'] = audio_emb.to("cpu")
         if num_repeat is None or num_repeat > nr:
             num_repeat = nr
@@ -535,7 +537,7 @@ class WanS2V:
             context_null = [t.to(self.device) for t in context_null]
         wan['prompt_embeds'] = context
         wan['negative_prompt_embeds'] = context_null
-        
+
         out = []
         # evaluation mode
         with (
